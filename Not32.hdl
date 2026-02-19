@@ -1,0 +1,8 @@
+CHIP Not32 {
+    IN in[32];
+    OUT out[32];
+
+    PARTS:
+    Not16(in=in[0..15],  out=out[0..15]);
+    Not16(in=in[16..31], out=out[16..31]);
+}
