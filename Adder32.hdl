@@ -4,7 +4,7 @@ CHIP Adder32 {
 
     PARTS:
 
-    // Parte baja (bits 0–15)
+    // Parte baja
     Add16(
         a=a[0..15],
         b=b[0..15],
@@ -12,7 +12,7 @@ CHIP Adder32 {
         carry=c1
     );
 
-    // Parte alta (bits 16–31)
+    // Parte alta
     Add16(
         a=a[16..31],
         b=b[16..31],
@@ -21,13 +21,6 @@ CHIP Adder32 {
         carry=carryOut
     );
 
-    // El carry que entra al MSB (bit 31)
-    // Es el carry interno del último Add16
-    // Como Add16 no lo expone directamente,
-    // usamos carryOut como referencia
-    // (carryIntoMSB = carry que entra a bit 31)
-    // En arquitectura real sería el carry del bit 30
-    // Para Nand2Tetris usamos el carry final del bloque alto
-
-    And(a=carryOut, b=true, out=carryIntoMSB);
+    // carryIntoMSB = carry que entra al bit 31
+    And(a=c1, b=true, out=carryIntoMSB);
 }
