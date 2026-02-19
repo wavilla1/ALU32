@@ -1,10 +1,70 @@
-CHIP ALU32{
-    IN x1[16], x2[16],y1[16],y2[16], nx, ny, zx, zy, f, no;
-    OUT out1[16], out2[16], zr, ng, overflow;
-    
-    PARTS:
-        ALU16(x=x1,y=y1,zx=zx,nx=nx,zy=zy,ny=ny,f=f,no=no,carryLlegada=false,out=out1,zr=zr1,ng = ng1,carryOut31=carry1,overflow=overflowLow);
-        ALU16(x=x2,y=y2,zx=zx,nx=nx,zy=zy,ny=ny,f=f,no=no,carryLlegada=carry1,out=out2,zr=zr2,out[15] = ng,carryOut31=carryOut31,overflow=overflow);
-        And(a=zr1,b=zr2,out=zr);
+CHIP ALU32 {
 
+    IN  x[32], y[32], z[32],
+        sel[2];     // 01 = X+Y+Z, 10 = Z-X+Y
+
+    OUT out[32], zr, ng, ov;
+
+    PARTS:
+
+    // ======================
+    // 1) X + Y
+    // ======================
+    Adder32(a=x, b=y, out=xy, carryOut=cxy);
+
+    // ======================
+    // 2) X + Y + Z
+    // ======================
+    Adder32(a=xy, b=z, out=xyz, carryOut=cxyz);
+
+    // ======================
+    // 3) Z - X
+    // ======================
+
+    // ~X
+    Not32(in=x, out=notx);
+
+    // +1 (usar constante 1)
+    Adder32(
+        a=notx,
+        b[0]=true,
+        b[1..31]=false,
+        out=negx,
+        carryOut=dummy1
+    );
+
+    // Z + (-X)
+    Adder32(a=z, b=negx, out=zx, carryOut=czx);
+
+    // ======================
+    // 4) Z - X + Y
+    // ======================
+    Adder32(a=zx, b=y, out=zxy, carryOut=czxy);
+
+    // ======================
+    // 5) Selección
+    // ======================
+
+    Mux4Way32(
+        a=false,    // 00 reservado
+        b=xyz,      // 01
+        c=zxy,      // 10
+        d=false,
+        sel=sel,
+        out=out
+    );
+
+    // ======================
+    // FLAGS
+    // ======================
+
+    // zr
+    Or32Way(in=out, out=anyBit);
+    Not(in=anyBit, out=zr);
+
+    // ng (bit más significativo)
+    And(a=out[31], b=true, out=ng);
+
+    // overflow (aprox válido para sumas)
+    Xor(a=cxyz, b=czxy, out=ov);
 }
