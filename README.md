@@ -1,13 +1,13 @@
 
 # Parcial 1 — Organización de Computadores  
 ## Microarquitectura de una ALU de 32 bits  
-**Equipo:** 2 personas  
+**Equipo:** William Villa Carmona, Daniela Álvarez Acevedo  
 **Bus:** 32 bits  
 **Entradas:** X, Y, Z  
 
 ---
 
-# 1️⃣ Descripción General
+# 1️. Descripción General
 
 Se diseñó una ALU de 32 bits implementada de manera jerárquica,
 utilizando bloques de 16 bits (Add16) para construir un sumador de 32 bits.
@@ -21,15 +21,15 @@ La arquitectura sigue las 4 etapas solicitadas:
 
 ---
 
-# 2️⃣ Funciones Implementadas
+# 2. Funciones Implementadas
 
-## 🔹 Operación 1
+##  Operación 1
 X + Y + Z  
 
 Implementación:
 (X + Y) + Z
 
-## 🔹 Operación 2
+##  Operación 2
 Z - X + Y  
 
 Usando complemento a 2:
@@ -40,7 +40,7 @@ Entonces:
 
 ---
 
-# 3️⃣ Arquitectura Jerárquica
+# 3️. Arquitectura Jerárquica
 
 Componentes utilizados:
 
@@ -52,9 +52,9 @@ Componentes utilizados:
 
 ---
 
-# 4️⃣ Diagrama de Arquitectura
+# 4️. Diagrama de Arquitectura
 
-## 🔵 ETAPA 1 — PRE-CONDICIONAMIENTO
+##  ETAPA 1 — PRE-CONDICIONAMIENTO
 
 Entradas directas:
 X, Y, Z
@@ -64,7 +64,7 @@ X → Not32 → +1 → (-X)
 
 ---
 
-## 🟢 ETAPA 2 — PROCESAMIENTO
+##  ETAPA 2 — PROCESAMIENTO
 
 ### X + Y
 Adder32(X, Y) → XY
@@ -79,13 +79,14 @@ Adder32(Z, -X) → ZX
 ### Z - X + Y
 Adder32(ZX, Y) → ZXY
 
-Cada Adder32 está compuesto por:
+Cada Adder32 está compuesto por: 
+
 Add16 (bits 0–15)  
 Add16 (bits 16–31)  
 
 ---
 
-## 🟡 ETAPA 3 — SELECCIÓN
+##  ETAPA 3 — SELECCIÓN
 
 Mux4Way32 controla la salida final:
 
@@ -94,7 +95,7 @@ sel = 10 → ZXY
 
 ---
 
-## 🔴 ETAPA 4 — FLAGS
+##  ETAPA 4 — FLAGS
 
 ### Zero Flag (zr)
 OUT → Or32Way → NOT → zr  
@@ -114,7 +115,7 @@ ov = carryIntoMSB XOR carryOut
 
 ---
 
-# 5️⃣ Tabla de Control
+# 5️. Tabla de Control
 
 | sel[1] | sel[0] | Operación     | Descripción |
 |--------|--------|--------------|-------------|
@@ -123,19 +124,38 @@ ov = carryIntoMSB XOR carryOut
 | 1      | 0      | Z - X + Y    | (Z + (~X + 1)) + Y |
 | 1      | 1      | Reservado    | — |
 
----
-
-# 6️⃣ Justificación Técnica
-
-✔ Diseño jerárquico  
-✔ Uso de bloques de 16 bits  
-✔ Separación clara en 4 etapas  
-✔ Overflow matemáticamente correcto  
-✔ Modular y escalable  
+La selección final se realiza mediante un Mux4Way32.
 
 ---
+# 6. Validación Funcional
 
-# 7️⃣ Conclusión
+Se validó el funcionamiento mediante el Hardware Simulator ejecutando archivos .tst con los siguientes casos:
+
+- Valores positivos
+
+- Valores negativos
+
+- Resultado cero
+
+- Casos con overflow
+
+- Valores límite
+
+El chip compila y ejecuta correctamente sin errores.
+
+---
+
+# 7. Justificación Técnica
+
+- Diseño jerárquico  
+- Uso de bloques de 16 bits  
+- Separación clara en 4 etapas  
+- Overflow matemáticamente correcto  
+- Modular y escalable  
+
+---
+
+# 8. Conclusión
 
 La ALU32 implementa correctamente las funciones solicitadas
 para equipo de 2 personas, cumpliendo con los requerimientos
