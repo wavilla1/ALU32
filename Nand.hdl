@@ -2,5 +2,6 @@ CHIP Nand {
     IN a, b;
     OUT out;
 
-    BUILTIN Nand;
+    PARTS:
+    BuiltInNand(a=a, b=b, out=out);
 }
