@@ -1,116 +1,55 @@
 CHIP ALU32 {
 
     IN  x[32], y[32], z[32],
-        sel[2];     // 01 = X+Y+Z, 10 = Z-X+Y
+        sel[2];
 
     OUT out[32], zr, ng, ov;
 
     PARTS:
 
-    // =====================================================
-    // ETAPA 1: PRE-CONDICIONAMIENTO
-    // =====================================================
+    // X + Y
+    Adder32(a=x, b=y, carryIn=false,
+            out=xy, carryOut=cxy, carryIntoMSB=cin_xy);
 
-    // En este diseño no modificamos entradas,
-    // pero la etapa queda explícita arquitectónicamente.
-    // x_pre = x
-    // y_pre = y
-    // z_pre = z
-
-
-    // =====================================================
-    // ETAPA 2: PROCESAMIENTO
-    // =====================================================
-
-    // -------- X + Y --------
-    Adder32(
-        a=x,
-        b=y,
-        out=xy,
-        carryOut=cxy,
-        carryIntoMSB=cin_xy
-    );
-
-    // -------- X + Y + Z --------
-    Adder32(
-        a=xy,
-        b=z,
-        out=xyz,
-        carryOut=cxyz,
-        carryIntoMSB=cin_xyz
-    );
+    // X + Y + Z
+    Adder32(a=xy, b=z, carryIn=false,
+            out=xyz, carryOut=cxyz, carryIntoMSB=cin_xyz);
 
     // -------- Z - X --------
     Not32(in=x, out=notx);
 
-    // +1 para complemento a 2
-    Adder32(
-        a=notx,
-        b[0]=true,
-        b[1..31]=false,
-        out=negx,
-        carryOut=d1,
-        carryIntoMSB=d2
-    );
+    // complemento a 2 usando carryIn = true
+    Adder32(a=notx, b=false, carryIn=true,
+            out=negx, carryOut=d1, carryIntoMSB=d2);
 
     // Z + (-X)
-    Adder32(
-        a=z,
-        b=negx,
-        out=zx,
-        carryOut=czx,
-        carryIntoMSB=cin_zx
-    );
+    Adder32(a=z, b=negx, carryIn=false,
+            out=zx, carryOut=czx, carryIntoMSB=cin_zx);
 
-    // -------- Z - X + Y --------
-    Adder32(
-        a=zx,
-        b=y,
-        out=zxy,
-        carryOut=czxy,
-        carryIntoMSB=cin_zxy
-    );
+    // Z - X + Y
+    Adder32(a=zx, b=y, carryIn=false,
+            out=zxy, carryOut=czxy, carryIntoMSB=cin_zxy);
 
-
-    // =====================================================
-    // ETAPA 3: SELECCIÓN (MUX)
-    // =====================================================
-
+    // MUX
     Mux4Way32(
-        a=false,    // 00 reservado
-        b=xyz,      // 01 -> X+Y+Z
-        c=zxy,      // 10 -> Z-X+Y
+        a=false,
+        b=xyz,
+        c=zxy,
         d=false,
         sel=sel,
         out=out
     );
 
-
-    // =====================================================
-    // ETAPA 4: FLAGS
-    // =====================================================
-
-    // Zero flag
+    // Zero
     Or32Way(in=out, out=anyBit);
     Not(in=anyBit, out=zr);
 
-    // Negative flag (bit más significativo)
+    // Negative
     And(a=out[31], b=true, out=ng);
 
-    // OVERFLOW CORRECTO
-    // ov = carryIntoMSB XOR carryOut
-
-    // Overflow para X+Y+Z
+    // Overflow
     Xor(a=cin_xyz, b=cxyz, out=ov_xyz);
-
-    // Overflow para Z-X+Y
     Xor(a=cin_zxy, b=czxy, out=ov_zxy);
 
-    // Seleccionamos overflow según operación
-    Mux(
-        a=ov_xyz,
-        b=ov_zxy,
-        sel=sel[1],   // si es 10 usa ov_zxy
-        out=ov
-    );
+    Mux(a=ov_xyz, b=ov_zxy, sel=sel[1], out=ov);
 }
