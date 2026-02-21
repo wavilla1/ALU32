@@ -3,12 +3,41 @@ CHIP Or32Way {
     OUT out;
 
     PARTS:
-    Or8Way(in=in[0..7], out=o1);
-    Or8Way(in=in[8..15], out=o2);
-    Or8Way(in=in[16..23], out=o3);
-    Or8Way(in=in[24..31], out=o4);
+    Or(a=in[0], b=in[1], out=o1);
+    Or(a=in[2], b=in[3], out=o2);
+    Or(a=o1, b=o2, out=o3);
+    Or(a=in[4], b=in[5], out=o4);
+    Or(a=in[6], b=in[7], out=o5);
+    Or(a=o4, b=o5, out=o6);
+    Or(a=o3, b=o6, out=o7);
 
-    Or(a=o1, b=o2, out=o12);
-    Or(a=o3, b=o4, out=o34);
-    Or(a=o12, b=o34, out=out);
+    Or(a=in[8], b=in[9], out=o8);
+    Or(a=in[10], b=in[11], out=o9);
+    Or(a=o8, b=o9, out=o10);
+    Or(a=in[12], b=in[13], out=o11);
+    Or(a=in[14], b=in[15], out=o12);
+    Or(a=o11, b=o12, out=o13);
+    Or(a=o10, b=o13, out=o14);
+
+    Or(a=o7, b=o14, out=o15);
+
+    // 16–31
+    Or(a=in[16], b=in[17], out=p1);
+    Or(a=in[18], b=in[19], out=p2);
+    Or(a=p1, b=p2, out=p3);
+    Or(a=in[20], b=in[21], out=p4);
+    Or(a=in[22], b=in[23], out=p5);
+    Or(a=p4, b=p5, out=p6);
+    Or(a=p3, b=p6, out=p7);
+
+    Or(a=in[24], b=in[25], out=p8);
+    Or(a=in[26], b=in[27], out=p9);
+    Or(a=p8, b=p9, out=p10);
+    Or(a=in[28], b=in[29], out=p11);
+    Or(a=in[30], b=in[31], out=p12);
+    Or(a=p11, b=p12, out=p13);
+
+    Or(a=p7, b=p13, out=p14);
+
+    Or(a=o15, b=p14, out=out);
 }
