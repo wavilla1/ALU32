@@ -1,92 +1,85 @@
 CHIP ALU32 {
 
-    IN  
-        x[32], y[32], z[32],
-        zx, nx, zy, ny, f, no,   // Control Hack estándar
-        op1, op0;                // 00=Hack | 01=X+Y+Z | 10=Z-X+Y
+    IN  x1[16], x2[16],
+        y1[16], y2[16],
+        z1[16], z2[16],
+        zx, nx, zy, ny, f, no,
+        op1, op0;   // 00=Hack | 01=X+Y+Z | 10=Z-X+Y
 
-    OUT 
-        out[32],
+    OUT out1[16], out2[16],
         zr,
         ng;
 
     PARTS:
 
-    // =========================
-    // 1️⃣ PRE-CONDICIONAMIENTO
-    // =========================
+    // ==================================================
+    // 1️⃣ ALU HACK ORIGINAL (NO SE MODIFICA)
+    // ==================================================
 
-    // Zero X
-    Mux32(a=x, b=false, sel=zx, out=x1);
-    // Negate X
-    Not32(in=x1, out=notx1);
-    Mux32(a=x1, b=notx1, sel=nx, out=x2);
+    ALU16MOD(x=x1, y=y1, zx=zx, nx=nx, zy=zy, ny=ny, f=f, no=no,
+             out=hackLow, zr=zr1, ng=ngLow);
 
-    // Zero Y
-    Mux32(a=y, b=false, sel=zy, out=y1);
-    // Negate Y
-    Not32(in=y1, out=noty1);
-    Mux32(a=y1, b=noty1, sel=ny, out=y2);
+    ALU16MOD(x=x2, y=y2, zx=zx, nx=nx, zy=zy, ny=ny, f=f, no=no,
+             out=hackHigh, zr=zr2, ng=ngHigh);
 
 
-    // =========================
-    // 2️⃣ PROCESAMIENTO PARALELO
-    // =========================
+    // ==================================================
+    // 2️⃣ X + Y + Z
+    // ==================================================
 
-    // ----- ALU Hack estándar -----
-    And32(a=x2, b=y2, out=andOut);
-    Add32(a=x2, b=y2, out=addOut);
-    Mux32(a=andOut, b=addOut, sel=f, out=hackPreOut);
+    // X + Y
+    Add16(a=x1, b=y1, out=xyLow);
+    Add16(a=x2, b=y2, out=xyHigh);
 
-    Not32(in=hackPreOut, out=notHackPreOut);
-    Mux32(a=hackPreOut, b=notHackPreOut, sel=no, out=hackOut);
-
-
-    // ----- X + Y + Z -----
-    Add32(a=x, b=y, out=xySum);
-    Add32(a=xySum, b=z, out=xyzOut);
+    // (X + Y) + Z
+    Add16(a=xyLow, b=z1, out=xyzLow);
+    Add16(a=xyHigh, b=z2, out=xyzHigh);
 
 
-    // ----- Z - X + Y -----
-    // Calcular -X
-    Not32(in=x, out=notX);
-    Add32(a=notX, b[0]=true, out=negX);   // complemento a 2
+    // ==================================================
+    // 3️⃣ Z - X + Y
+    // ==================================================
+
+    // -X (complemento a 2)
+    Not16(in=x1, out=notX1);
+    Not16(in=x2, out=notX2);
+
+    Add16(a=notX1, b[0]=true, out=negX1);
+    Add16(a=notX2, b=false, out=negX2);
 
     // Z - X
-    Add32(a=z, b=negX, out=zMinusX);
+    Add16(a=z1, b=negX1, out=zMinusXLow);
+    Add16(a=z2, b=negX2, out=zMinusXHigh);
 
     // (Z - X) + Y
-    Add32(a=zMinusX, b=y, out=zMinusXplusYOut);
+    Add16(a=zMinusXLow, b=y1, out=finalLow);
+    Add16(a=zMinusXHigh, b=y2, out=finalHigh);
 
 
-    // =========================
-    // 3️⃣ ETAPA DE SELECCIÓN
-    // =========================
+    // ==================================================
+    // 4️⃣ ETAPA DE SELECCIÓN
+    // ==================================================
     // op1 op0
     //  0   0   → Hack
     //  0   1   → X+Y+Z
     //  1   0   → Z-X+Y
 
-    Mux32(a=hackOut, b=xyzOut, sel=op0, out=sel1);
-    Mux32(a=sel1, b=zMinusXplusYOut, sel=op1, out=out);
+    // Primera capa
+    Mux16(a=hackLow, b=xyzLow, sel=op0, out=selLow1);
+    Mux16(a=hackHigh, b=xyzHigh, sel=op0, out=selHigh1);
+
+    // Segunda capa
+    Mux16(a=selLow1, b=finalLow, sel=op1, out=out1);
+    Mux16(a=selHigh1, b=finalHigh, sel=op1, out=out2);
 
 
-    // =========================
-    // 4️⃣ FLAGS
-    // =========================
+    // ==================================================
+    // 5️⃣ FLAGS
+    // ==================================================
 
-    // zr = 1 si out == 0
-    Or8Way(in=out[0..7], out=o1);
-    Or8Way(in=out[8..15], out=o2);
-    Or8Way(in=out[16..23], out=o3);
-    Or8Way(in=out[24..31], out=o4);
+    // Zero flag
+    And(a=zr1, b=zr2, out=zr);
 
-    Or(a=o1, b=o2, out=o12);
-    Or(a=o3, b=o4, out=o34);
-    Or(a=o12, b=o34, out=orAll);
-
-    Not(in=orAll, out=zr);
-
-    // ng = bit más significativo
-    And(a=true, b=out[31], out=ng);
+    // Negative flag (bit más significativo)
+    And(a=true, b=out2[15], out=ng);
 }
