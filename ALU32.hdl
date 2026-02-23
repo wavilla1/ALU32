@@ -1,55 +1,92 @@
 CHIP ALU32 {
 
-    IN  x[32], y[32], z[32],
-        sel[2];
+    IN  
+        x[32], y[32], z[32],
+        zx, nx, zy, ny, f, no,   // Control Hack estándar
+        op1, op0;                // 00=Hack | 01=X+Y+Z | 10=Z-X+Y
 
-    OUT out[32], zr, ng, ov;
+    OUT 
+        out[32],
+        zr,
+        ng;
 
     PARTS:
 
-    // X + Y
-    Adder32(a=x, b=y, carryIn=false,
-            out=xy, carryOut=cxy, carryIntoMSB=cin_xy);
+    // =========================
+    // 1️⃣ PRE-CONDICIONAMIENTO
+    // =========================
 
-    // X + Y + Z
-    Adder32(a=xy, b=z, carryIn=false,
-            out=xyz, carryOut=cxyz, carryIntoMSB=cin_xyz);
+    // Zero X
+    Mux32(a=x, b=false, sel=zx, out=x1);
+    // Negate X
+    Not32(in=x1, out=notx1);
+    Mux32(a=x1, b=notx1, sel=nx, out=x2);
 
-    // -------- Z - X --------
-    Not32(in=x, out=notx);
+    // Zero Y
+    Mux32(a=y, b=false, sel=zy, out=y1);
+    // Negate Y
+    Not32(in=y1, out=noty1);
+    Mux32(a=y1, b=noty1, sel=ny, out=y2);
 
-    // complemento a 2 usando carryIn = true
-    Adder32(a=notx, b=false, carryIn=true,
-            out=negx, carryOut=d1, carryIntoMSB=d2);
 
-    // Z + (-X)
-    Adder32(a=z, b=negx, carryIn=false,
-            out=zx, carryOut=czx, carryIntoMSB=cin_zx);
+    // =========================
+    // 2️⃣ PROCESAMIENTO PARALELO
+    // =========================
 
-    // Z - X + Y
-    Adder32(a=zx, b=y, carryIn=false,
-            out=zxy, carryOut=czxy, carryIntoMSB=cin_zxy);
+    // ----- ALU Hack estándar -----
+    And32(a=x2, b=y2, out=andOut);
+    Add32(a=x2, b=y2, out=addOut);
+    Mux32(a=andOut, b=addOut, sel=f, out=hackPreOut);
 
-    // MUX
-    Mux4Way32(
-        a=false,
-        b=xyz,
-        c=zxy,
-        d=false,
-        sel=sel,
-        out=out
-    );
+    Not32(in=hackPreOut, out=notHackPreOut);
+    Mux32(a=hackPreOut, b=notHackPreOut, sel=no, out=hackOut);
 
-    // Zero
-    Or32Way(in=out, out=anyBit);
-    Not(in=anyBit, out=zr);
 
-    // Negative
-    And(a=out[31], b=true, out=ng);
+    // ----- X + Y + Z -----
+    Add32(a=x, b=y, out=xySum);
+    Add32(a=xySum, b=z, out=xyzOut);
 
-    // Overflow
-    Xor(a=cin_xyz, b=cxyz, out=ov_xyz);
-    Xor(a=cin_zxy, b=czxy, out=ov_zxy);
 
-    Mux(a=ov_xyz, b=ov_zxy, sel=sel[1], out=ov);
+    // ----- Z - X + Y -----
+    // Calcular -X
+    Not32(in=x, out=notX);
+    Add32(a=notX, b[0]=true, out=negX);   // complemento a 2
+
+    // Z - X
+    Add32(a=z, b=negX, out=zMinusX);
+
+    // (Z - X) + Y
+    Add32(a=zMinusX, b=y, out=zMinusXplusYOut);
+
+
+    // =========================
+    // 3️⃣ ETAPA DE SELECCIÓN
+    // =========================
+    // op1 op0
+    //  0   0   → Hack
+    //  0   1   → X+Y+Z
+    //  1   0   → Z-X+Y
+
+    Mux32(a=hackOut, b=xyzOut, sel=op0, out=sel1);
+    Mux32(a=sel1, b=zMinusXplusYOut, sel=op1, out=out);
+
+
+    // =========================
+    // 4️⃣ FLAGS
+    // =========================
+
+    // zr = 1 si out == 0
+    Or8Way(in=out[0..7], out=o1);
+    Or8Way(in=out[8..15], out=o2);
+    Or8Way(in=out[16..23], out=o3);
+    Or8Way(in=out[24..31], out=o4);
+
+    Or(a=o1, b=o2, out=o12);
+    Or(a=o3, b=o4, out=o34);
+    Or(a=o12, b=o34, out=orAll);
+
+    Not(in=orAll, out=zr);
+
+    // ng = bit más significativo
+    And(a=true, b=out[31], out=ng);
 }
